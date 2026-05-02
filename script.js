@@ -90,11 +90,7 @@ async function loadCollectionsFromFirebase() {
   if (!collectionsGrid || !categoryFilter) return;
 
   collectionsGrid.innerHTML = "";
-
-  defaultCollections.forEach(item => {
-    addCategoryOption(item.name);
-    renderCollectionCard(item);
-  });
+  categoryFilter.innerHTML = `<option value="all">All Categories</option>`;
 
   try {
     const snapshot = await getDocs(collection(db, "collections"));
@@ -102,13 +98,30 @@ async function loadCollectionsFromFirebase() {
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
 
-      if (data.name && data.image) {
-        addCategoryOption(data.name);
-        renderCollectionCard(data);
+      if (!data.name) return;
+
+      const exists = [...categoryFilter.options].some(
+        option => option.value.toLowerCase() === data.name.toLowerCase()
+      );
+
+      if (!exists) {
+        categoryFilter.innerHTML += `
+          <option value="${data.name}">${data.name}</option>
+        `;
+      }
+
+      if (data.image) {
+        collectionsGrid.innerHTML += `
+          <div class="collection-card" onclick="quickCategory('${data.name}')">
+            <img src="${data.image}" alt="${data.name}">
+            <h3>${data.name}</h3>
+          </div>
+        `;
       }
     });
+
   } catch (error) {
-    console.error("Collections loading failed:", error);
+    console.error("Collection load error:", error);
   }
 }
 
