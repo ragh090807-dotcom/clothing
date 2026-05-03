@@ -19,6 +19,8 @@ import {
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+const ALLOWED_ADMIN = "ragh090807@gmail.com";
+
 const loginBox = document.getElementById("loginBox");
 const adminPanel = document.getElementById("adminPanel");
 const loginError = document.getElementById("loginError");
@@ -50,9 +52,19 @@ async function loginAdmin() {
   }
 
   try {
-    await signInWithEmailAndPassword(auth, adminEmail.value, adminPassword.value);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      adminEmail.value.trim(),
+      adminPassword.value
+    );
+
+    if (userCredential.user.email !== ALLOWED_ADMIN) {
+      loginError.textContent = "Not authorized as admin.";
+      await signOut(auth);
+      return;
+    }
   } catch (error) {
-    loginError.textContent = "Login failed: " + error.message;
+    loginError.textContent = "Invalid admin credentials.";
   }
 }
 
@@ -61,7 +73,7 @@ async function logoutAdmin() {
 }
 
 onAuthStateChanged(auth, user => {
-  if (user) {
+  if (user && user.email === ALLOWED_ADMIN) {
     loginBox.style.display = "none";
     adminPanel.style.display = "block";
     loadProducts();
@@ -69,6 +81,10 @@ onAuthStateChanged(auth, user => {
   } else {
     loginBox.style.display = "block";
     adminPanel.style.display = "none";
+
+    if (user && user.email !== ALLOWED_ADMIN) {
+      signOut(auth);
+    }
   }
 });
 
@@ -237,6 +253,7 @@ async function loadOrders() {
         <div class="order-card">
           <h2>Order ID: ${order.id}</h2>
           <p><b>Name:</b> ${order.customerName || order.name}</p>
+          <p><b>Email:</b> ${order.userEmail || "N/A"}</p>
           <p><b>Phone:</b> ${order.phone}</p>
           <p><b>Address:</b> ${order.address}</p>
           <p><b>Payment:</b> ${order.paymentStatus || "Pending"}</p>
@@ -298,10 +315,10 @@ function exportOrders() {
     return;
   }
 
-  let csv = "Order ID,Name,Phone,Address,Total,Payment Status,Order Status\n";
+  let csv = "Order ID,Name,Email,Phone,Address,Total,Payment Status,Order Status\n";
 
   ordersCache.forEach(order => {
-    csv += `"${order.id}","${order.customerName || order.name}","${order.phone}","${order.address}","${order.total}","${order.paymentStatus}","${order.orderStatus}"\n`;
+    csv += `"${order.id}","${order.customerName || order.name}","${order.userEmail || ""}","${order.phone}","${order.address}","${order.total}","${order.paymentStatus}","${order.orderStatus}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
