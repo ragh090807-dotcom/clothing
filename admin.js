@@ -364,11 +364,13 @@ async function reduceStockAfterOrder(order) {
       let productRef = null;
       let productSnap = null;
 
+      // Try using product ID first
       if (item.id) {
         productRef = doc(db, "products", item.id);
         productSnap = await getDoc(productRef);
       }
 
+      // If ID not found, fallback using product name
       if (!productSnap || !productSnap.exists()) {
         const q = query(
           collection(db, "products"),
@@ -383,6 +385,7 @@ async function reduceStockAfterOrder(order) {
         }
       }
 
+      // Update stock
       if (productSnap && productSnap.exists()) {
         const productData = productSnap.data();
 
