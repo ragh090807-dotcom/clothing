@@ -135,18 +135,22 @@ function addDetailProductToCart() {
   );
 
   if (existing) {
-    if (existing.qty >= stock) {
+    const currentQty = Number(existing.qty || existing.quantity || 1);
+
+    if (currentQty >= stock) {
       alert("Only " + stock + " items available in stock.");
       return;
     }
 
-    existing.qty++;
+    existing.qty = currentQty + 1;
+    existing.quantity = currentQty + 1;
   } else {
     cart.push({
       ...currentProduct,
-      selectedSize,
-      stock,
-      qty: 1
+      selectedSize: selectedSize,
+      stock: stock,
+      qty: 1,
+      quantity: 1
     });
   }
 
@@ -155,7 +159,6 @@ function addDetailProductToCart() {
   alert("Product added to cart.");
   window.location.href = "index.html";
 }
-
 window.addDetailProductToCart = addDetailProductToCart;
 
 loadProduct();
