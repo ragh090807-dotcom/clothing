@@ -70,7 +70,8 @@ function displayProduct(product) {
       : [];
 
   const sizeOptions = sizes.map(size => `<option value="${size}">${size}</option>`).join("");
-  const isOut = Number(product.stock) <= 0;
+  const stock = Number(product.stock) || 0;
+  const isOut = stock <= 0;
   const description = cleanDescription(product.description);
 
   productDetail.innerHTML = `
@@ -91,7 +92,7 @@ function displayProduct(product) {
 
       <p class="product-description">${description}</p>
 
-      <p class="stock-text"><b>Stock:</b> ${product.stock ?? "Available"}</p>
+      <p class="stock-text"><b>Stock:</b> ${stock}</p>
 
       ${
         isOut
@@ -120,6 +121,13 @@ function addDetailProductToCart() {
     return;
   }
 
+  const stock = Number(currentProduct.stock) || 0;
+
+  if (stock <= 0) {
+    alert("This product is out of stock.");
+    return;
+  }
+
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
   const existing = cart.find(
@@ -127,11 +135,17 @@ function addDetailProductToCart() {
   );
 
   if (existing) {
+    if (existing.qty >= stock) {
+      alert("Only " + stock + " items available in stock.");
+      return;
+    }
+
     existing.qty++;
   } else {
     cart.push({
       ...currentProduct,
       selectedSize,
+      stock,
       qty: 1
     });
   }
