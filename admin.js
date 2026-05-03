@@ -211,7 +211,6 @@ function clearProductForm() {
   productImage.value = "";
   productDescription.value = "";
 }
-
 async function loadOrders() {
   ordersDiv.innerHTML = "<p>Loading orders...</p>";
 
@@ -238,6 +237,7 @@ async function loadOrders() {
       const orderItems = order.items || order.cart || [];
 
       let itemsHTML = "";
+
       orderItems.forEach(item => {
         itemsHTML += `
           <div class="product-box">
@@ -276,6 +276,7 @@ async function loadOrders() {
         </div>
       `;
     });
+
   } catch (error) {
     ordersDiv.innerHTML = "<p>Error loading orders.</p>";
     console.error(error);
@@ -286,12 +287,25 @@ async function updateOrderStatus(orderId, status) {
   if (!status) return;
 
   try {
-    await updateDoc(doc(db, "orders", orderId), {
+    const orderRef = doc(db, "orders", orderId);
+    const orderSnap = await getDoc(orderRef);
+
+    if (!orderSnap.exists()) return;
+
+    const orderData = orderSnap.data();
+
+    // Reduce stock only when order is confirmed first time
+    if (status === "Packed" && orderData.orderStatus !== "Packed") {
+      await reduceStockAfterOrder({ id: orderId, ...orderData });
+    }
+
+    await updateDoc(orderRef, {
       orderStatus: status
     });
 
     alert("Order status updated.");
     loadOrders();
+
   } catch (error) {
     alert("Error updating order: " + error.message);
   }
@@ -341,3 +355,28 @@ window.deleteProduct = deleteProduct;
 window.updateOrderStatus = updateOrderStatus;
 window.deleteOrder = deleteOrder;
 window.exportOrders = exportOrders;
+async function reduceStockAfterOrder(order) {
+  const items = order.items || order.cart || [];
+
+  for (const item of items) {
+    try {
+      const productRef = doc(db, "products", item.id);
+      const productSnap = await getDoc(productRef);
+
+      if (productSnap.exists()) {
+        const productData = productSnap.data();
+
+        const currentStock = productData.stock || 0;
+        const qty = item.qty || item.quantity || 1;
+
+        const newStock = Math.max(0, currentStock - qty);
+
+        await updateDoc(productRef, {
+          stock: newStock
+        });
+      }
+    } catch (error) {
+      console.error("Stock update error:", error);
+    }
+  }
+}
