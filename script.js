@@ -526,9 +526,21 @@ window.clearFilters = clearFilters;
 window.quickCategory = quickCategory;
 
 async function initWebsite() {
-  await loadCollectionsFromFirebase();
-  await loadProductsFromFirebase();
   updateCart();
+
+  // Load products first (fast UI)
+  try {
+    await loadProductsFromFirebase();
+  } catch (error) {
+    console.error("Products loading failed:", error);
+  }
+
+  // Load collections after (background)
+  try {
+    await loadCollectionsFromFirebase();
+  } catch (error) {
+    console.error("Collections loading failed:", error);
+  }
 }
 
 initWebsite();
