@@ -16,7 +16,8 @@ import {
   getDoc,
   serverTimestamp,
   query,
-  orderBy
+orderBy,
+where
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const ALLOWED_ADMIN = "ragh090807@gmail.com";
@@ -360,14 +361,33 @@ async function reduceStockAfterOrder(order) {
 
   for (const item of items) {
     try {
-      const productRef = doc(db, "products", item.id);
-      const productSnap = await getDoc(productRef);
+      let productRef = null;
+      let productSnap = null;
 
-      if (productSnap.exists()) {
+      if (item.id) {
+        productRef = doc(db, "products", item.id);
+        productSnap = await getDoc(productRef);
+      }
+
+      if (!productSnap || !productSnap.exists()) {
+        const q = query(
+          collection(db, "products"),
+          where("name", "==", item.name)
+        );
+
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          productSnap = snapshot.docs[0];
+          productRef = doc(db, "products", productSnap.id);
+        }
+      }
+
+      if (productSnap && productSnap.exists()) {
         const productData = productSnap.data();
 
-        const currentStock = productData.stock || 0;
-        const qty = item.qty || item.quantity || 1;
+        const currentStock = Number(productData.stock) || 0;
+        const qty = Number(item.qty || item.quantity || 1);
 
         const newStock = Math.max(0, currentStock - qty);
 
@@ -375,6 +395,7 @@ async function reduceStockAfterOrder(order) {
           stock: newStock
         });
       }
+
     } catch (error) {
       console.error("Stock update error:", error);
     }
